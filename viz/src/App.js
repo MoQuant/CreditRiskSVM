@@ -55,7 +55,7 @@ export default class App extends React.Component {
               showscale: false
             }]}
             layout={{
-              title: key
+              title: key + ' | ' + response[key]['Title']
             }}
           />
         )

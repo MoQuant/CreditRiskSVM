@@ -57,8 +57,9 @@ def ZNorm(df):
     x = df.values
     m, n = x.shape
     for i in range(n):
-        x[:, i] -= np.mean(x[:, i])
-        x[:, i] /= np.std(x[:, i])
+        mu = np.mean(x[:, i])
+        sd = np.std(x[:, i])
+        x[:, i] = (x[:, i] - mu)/sd
     return x
 
 @Sample
@@ -107,11 +108,15 @@ async def Serving(ws, path):
         trainX, trainY = X_pca[:I], data[cat]['y'][:I]
         testX = X_pca[I:]
 
-        svm = SVC(kernel='linear')
+        svm = SVC(kernel='linear', probability=True)
         svm.fit(trainX, trainY)
 
         pred = svm.predict(testX)
         pred = pred.tolist()
+
+        prob = svm.predict_proba(testX)
+
+        title = 'Correct Classification: ' + '{0:.4f}%'.format(float(np.mean(prob[:, 0])*100))
 
         hx, hy, hz = [], [], []
         kx, ky, kz = [], [], []
@@ -122,12 +127,13 @@ async def Serving(ws, path):
                 kx.append(ix); ky.append(iy); kz.append(pz-1)
 
         lx, ly, lz = Plane(svm, testX)
-        final_dataset[cat] = {'ClassA':{'x':kx,'y':ky,'z':kz,'color':'red'},
+        final_dataset[cat] = {'Title':title,
+                              'ClassA':{'x':kx,'y':ky,'z':kz,'color':'red'},
                               'ClassB':{'x':hx,'y':hy,'z':hz,'color':'green'},
                               'Surface':{'x':lx,'y':ly,'z':lz}}
 
 
-        await ws.send(json.dumps(final_dataset))
+    await ws.send(json.dumps(final_dataset))
 
         
 print("Server has booted")
